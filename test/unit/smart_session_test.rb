@@ -217,6 +217,31 @@ class SmartSessionTest < ActiveSupport::TestCase
     assert_final_session :user_id => 123, :favourite_food => 'pizza'
   end
   
+  def test_session_destruction_during_processing
+    setup_base_session do |base_session|
+      base_session[:last_viewed_page] = 'home'
+    end
+    
+    first_env = @env.dup
+    second_env = @env.dup
+    first_session = SessionHash.new(SmartSessionStoreApp, first_env)
+    second_session = SessionHash.new(SmartSessionStoreApp, second_env)
+    first_session[:user_id] = 123
+    first_session[:last_viewed_page] = 'news'
+        
+    SmartSessionStoreApp.send :destroy, second_env
+    SmartSessionStoreApp.send :set_session, first_env, '123456', first_session.to_hash
+
+    consolidated_session = SessionHash.new(SmartSessionStoreApp, @env.dup)
+    consolidated_session.send :load!
+    assert_equal({}, consolidated_session.to_hash)
+  end
+
+  def test_session_destruction_during_processing_with_locking
+    with_locking do
+      test_session_destruction_during_processing
+    end
+  end
 
   def test_simultaneous_access_delete_keys
     

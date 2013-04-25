@@ -29,6 +29,7 @@ module SessionSmarts
         if session.id
           while !session.update_session_optimistically(marshalize(data))        
             fresh_session = get_fresh_session session, false
+            return nil unless fresh_session # session has been destroyed, forget it
             session,data = merge_sessions fresh_session, session, original_marshalled_data, changed_keys, deleted_keys, data
           end
         else
