@@ -1,18 +1,18 @@
-$KCODE = 'u'
-require 'jcode'
 ENV['TZ'] = 'UTC'
 require 'test/unit'
 require 'rubygems'
 require 'active_support'
 require 'active_record'
 require 'active_record/fixtures'
-require 'mocha'
+require 'mocha/setup'
 RAILS_ENV = 'test'
 
 require 'active_support/test_case'
 require 'active_record/fixtures'
 require 'action_pack'
 require 'action_controller'
+require 'smart_session'
+
 
 if defined? ActiveRecord::TestFixtures # this is rails 2.3+
   class ActiveSupport::TestCase
@@ -22,10 +22,10 @@ if defined? ActiveRecord::TestFixtures # this is rails 2.3+
     self.use_transactional_fixtures = true
 
     def with_locking
-      SqlSession.lock_optimistically = true
+      SmartSession::SqlSession.lock_optimistically = true
       yield
     ensure
-      SqlSession.lock_optimistically = false
+      SmartSession::SqlSession.lock_optimistically = false
     end
   end
 
@@ -39,21 +39,19 @@ end
 
 
 RAILS_DEFAULT_LOGGER = ActiveRecord::Base.logger = Logger.new(File.dirname(__FILE__) + "/debug.log")
-ActiveSupport::Dependencies.load_paths.unshift(File.dirname(__FILE__)+'/../lib')
 
-database_type = ENV['DATABASE'] || 'mysql'
+database_type = ENV['DATABASE'] || 'mysql2'
 
-config = YAML::load(IO.read(File.dirname(__FILE__) + '/database.yml'))
+if ENV['TRAVIS']
+  config = YAML::load(IO.read(File.dirname(__FILE__) + '/database.ci.yml'))
+else
+  config = YAML::load(IO.read(File.dirname(__FILE__) + '/database.yml'))
+end
 ActiveRecord::Base.configurations = {'test' => config[database_type]}
 ActiveRecord::Base.establish_connection(ActiveRecord::Base.configurations['test'])
 
-TEST_SESSION_CLASS = case database_type
-  when 'mysql' then MysqlSession
-  when 'mysql2' then Mysql2Session
-  when 'postgresql' then PostgresqlSession
-  when 'sqlite3' then SqliteSession
-end
 
-load(File.dirname(__FILE__) + "/schema.rb")
-SqlSession.lock_optimistically = false
+TEST_SESSION_CLASS =  database_type.to_sym
+SmartSession::Store.session_class = TEST_SESSION_CLASS
+SmartSession::SqlSession.lock_optimistically = false
 
