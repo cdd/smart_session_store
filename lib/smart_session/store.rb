@@ -8,7 +8,7 @@ module SmartSession
 
   class Store < ActionDispatch::Session::AbstractStore
     include SmartSession::SessionSmarts
-    
+
     # The class to be used for creating, retrieving and updating sessions.
     # Defaults to SmartSession::Session, which is derived from +ActiveRecord::Base+.
     #
@@ -22,7 +22,7 @@ module SmartSession
     @@session_class = SmartSession::SqlSession
 
     SESSION_RECORD_KEY = 'rack.session.record'.freeze
-      
+
     def self.session_class= symbol_or_class
       if symbol_or_class.is_a?(Symbol)
         @@session_class = case symbol_or_class
@@ -43,23 +43,19 @@ module SmartSession
       end
     end
     private
-    
+
     def get_session(env, sid)
-      ActiveRecord::Base.silence do
-        sid ||= generate_sid
-        session = find_session(sid)
-        env[SESSION_RECORD_KEY] = session
-        [sid, unmarshalize(session.data)]
-      end
+      sid ||= generate_sid
+      session = find_session(sid)
+      env[SESSION_RECORD_KEY] = session
+      [sid, unmarshalize(session.data)]
     end
 
     def set_session(env, sid, session_data, options)
-      ActiveRecord::Base.silence do
-        record = get_session_model(env, sid)
+      record = get_session_model(env, sid)
 
-        data, session = save_session(record, session_data)
-        env[SESSION_RECORD_KEY] = session
-      end
+      data, session = save_session(record, session_data)
+      env[SESSION_RECORD_KEY] = session
 
       return sid
     end
@@ -71,12 +67,12 @@ module SmartSession
         env[SESSION_RECORD_KEY] ||= find_session(sid)
       end
     end
-    
+
     def find_session(id)
       @@session_class.find_session(id) ||
         @@session_class.create_session(id, marshalize({}))
     end
-    
+
     def destroy_session(env, sid, options)
       if sid = current_session_id(env)
         get_session_model(env, sid).destroy
